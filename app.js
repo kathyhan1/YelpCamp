@@ -25,9 +25,14 @@ const mongoSanitize = require('express-mongo-sanitize')
 const userRoutes = require('./routes/users')
 const campgroundsRoutes= require('./routes/campgrounds')
 const reviewsRoutes= require('./routes/reviews')
+const MongoStore = require("connect-mongo");
 
-mongoose.connect('mongodb://localhost:27017/yelp-camp')
-const db= mongoose.connection 
+const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelp-camp';
+
+mongoose.connect(dbUrl,{ 
+});
+
+const db= mongoose.connection; 
 db.on("error", console.error.bind(console,"connection error:"));
 db.once("open",()=> {
     console.log("Database connected");
@@ -44,9 +49,25 @@ app.use(mongoSanitize({
     replaceWith:'_'
 }));
 
+const secret = process.env.SECRET || 'thisshouldbeaettersecret!';
+
+const store = MongoStore.create({
+    mongoUrl: dbUrl,
+    touchAfter: 24 * 60 * 60,
+    crypto: {
+        secret,
+        //secret: 'squirrel',
+    }
+});
+
+store.on("error", function (e) {
+    console.log("session store error", e)
+})
+
 const sessionConfig = {
+    store, 
     name: 'session',
-    secret: 'thisshouldbeabettersecret!',
+    secret,
     resave: false,
     saveUninitialized: true,
     cookie: {
@@ -103,7 +124,7 @@ app.use(
                 "data:",
                 "https://res.cloudinary.com/dl9wkcgau/", //SHOULD MATCH YOUR CLOUDINARY ACCOUNT!
                 "https://images.unsplash.com/",
-                "https://random.imagecdn.app/500/150",
+                //"https://random.imagecdn.app/500/150", this didnt work on home.ejs
             ],
             fontSrc    : [ "'self'", ...fontSrcUrls ],
             mediaSrc   : [ "https://res.cloudinary.com/dl9wkcgau/" ],
